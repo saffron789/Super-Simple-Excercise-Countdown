@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exercise Countdown</title>
+    <link rel="manifest" href="./manifest.json">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+            background-color: black;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        .timer {
+            font-size: 100px;
+            margin-bottom: 20px;
+            width: 200px;
+            text-align: center;
+            color: white;
+        }
+        .countdown2 {
+            color: green;
+        }
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 20px;
+            cursor: pointer;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="timer" class="timer countdown1">60</div>
+    <div class="buttons">
+        <button id="startBtn">START</button>
+        <button id="pauseResumeBtn" style="display: none;">PAUSE</button>
+        <button id="resetBtn" style="display: none;">RESET</button>
+    </div>
+
+    <script>
+        // Register the service worker
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', function() {
+            navigator.serviceWorker.register('./service-worker.js').then(function(registration) {
+              console.log('Service Worker registered with scope:', registration.scope);
+            }, function(err) {
+              console.log('Service Worker registration failed:', err);
+            });
+          });
+        }
+
+
+        let countdownTime1 = 60;
+        let countdownTime2 = 15;
+        let currentCountdownTime = countdownTime1;
+        let isPaused = false;
+        let isSecondCountdown = false;
+        let countdownInterval;
+        const timerElement = document.getElementById('timer');
+        const startBtn = document.getElementById('startBtn');
+        const pauseResumeBtn = document.getElementById('pauseResumeBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function updateTimerDisplay() {
+            timerElement.textContent = currentCountdownTime < 10 ? "0" + currentCountdownTime : currentCountdownTime;
+        }
+
+        function playBeep() {
+            // Use Web Audio API to create a simple beep
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.type = 'sine'; // sound type
+            oscillator.frequency.setValueAtTime(1000, audioCtx.currentTime); // Frequency in Hz (1000 Hz = 1 kHz beep)
+            oscillator.start();
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1); // Duration (0.1 seconds)
+            oscillator.stop(audioCtx.currentTime + 0.1); // Stop oscillator after 0.1 seconds
+        }
+
+        function startCountdown() {
+            playBeep();  // Play beep at the start of the countdown
+            countdownInterval = setInterval(() => {
+                if (!isPaused) {
+                    currentCountdownTime--;
+                    updateTimerDisplay();
+
+                    if (currentCountdownTime < 0) {
+                        clearInterval(countdownInterval);
+                        if (!isSecondCountdown) {
+                            // Switch to second countdown and play beep
+                            isSecondCountdown = true;
+                            timerElement.classList.replace('countdown1', 'countdown2');
+                            currentCountdownTime = countdownTime2;
+                            playBeep();  // Play beep when the second countdown starts
+                            updateTimerDisplay();
+                            startCountdown();
+                        } else {
+                            // Reset after second countdown finishes
+                            resetCountdown();
+                            startCountdown();
+                        }
+                    }
+                }
+            }, 1000);
+        }
+
+        startBtn.addEventListener('click', () => {
+            startCountdown();
+            startBtn.style.display = 'none';
+            pauseResumeBtn.style.display = 'inline-block';
+            resetBtn.style.display = 'inline-block';
+        });
+
+        pauseResumeBtn.addEventListener('click', () => {
+            isPaused = !isPaused;
+            pauseResumeBtn.textContent = isPaused ? 'RESUME' : 'PAUSE';
+        });
+
+        resetBtn.addEventListener('click', resetCountdown);
+
+        function resetCountdown() {
+            clearInterval(countdownInterval);
+            isSecondCountdown = false;
+            isPaused = false;
+            timerElement.classList.replace('countdown2', 'countdown1');
+            currentCountdownTime = countdownTime1;
+            updateTimerDisplay();
+            pauseResumeBtn.textContent = 'PAUSE';
+            startBtn.style.display = 'inline-block';
+            pauseResumeBtn.style.display = 'none';
+            resetBtn.style.display = 'none';
+        }
+
+        updateTimerDisplay();
+    </script>
+
+</body>
+</html>
